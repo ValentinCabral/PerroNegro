@@ -1,7 +1,14 @@
 import axios from 'axios';
 
+// Eliminar 'http://' o 'https://' si está presente en VITE_API_URL
+const baseURL = import.meta.env.VITE_API_URL?.replace(/^(http|https):\/\//, '') || 'perronegro.onrender.com/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL
+  baseURL: `https://${baseURL}`,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
 });
 
 api.interceptors.request.use(config => {
