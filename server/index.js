@@ -1,10 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 // Si tu archivo `index.js` está en `server` y los archivos `.ts` en `src/services`
-import { auth } from '../src/services/routes/auth';
-import { customers } from '../src/services/routes/customers';
-import { transactions } from '../src/services/routes/transactions';
-import { rewards } from '../src/services/routes/rewards';
+import { auth } from '../services/routes/auth';
+import { customers } from '../services/routes/customers';
+import { transactions } from '../services/routes/transactions';
+import { rewards } from '../services/routes/rewards';
 
 
 const app = express();
