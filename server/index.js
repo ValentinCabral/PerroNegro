@@ -1,9 +1,9 @@
 import express from 'express';
 import cors from 'cors';
-import { auth } from './routes/auth.js';
-import { customers } from './routes/customers.js';
-import { transactions } from './routes/transactions.js';
-import { rewards } from './routes/rewards.js';
+import { auth } from './routes/auth.ts';
+import { customers } from './routes/customers.ts';
+import { transactions } from './routes/transactions.ts';
+import { rewards } from './routes/rewards.ts';
 
 const app = express();
 
