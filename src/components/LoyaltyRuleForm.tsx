@@ -52,12 +52,13 @@ export function LoyaltyRuleForm({ onSuccess }: LoyaltyRuleFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="flex items-center space-x-4 mb-6">
-        <Plus className="text-gray-700" size={24} />
-        <h2 className="text-xl font-semibold">Nueva Regla de Puntos</h2>
-      </div>
-
+    <motion.form
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onSubmit={handleSubmit}
+      className="space-y-6"
+    >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Input
           label="Monto Mínimo ($)"
@@ -97,25 +98,23 @@ export function LoyaltyRuleForm({ onSuccess }: LoyaltyRuleFormProps) {
           step="0.1"
           required
         />
-
-        <div className="md:col-span-2">
-          <Input
-            label="Descripción"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            required
-          />
-        </div>
       </div>
+
+      <Input
+        label="Descripción"
+        value={formData.description}
+        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+        required
+      />
 
       <Button
         type="submit"
-        className="mt-6 w-full"
+        className="w-full"
         loading={loading}
         icon={<Plus size={20} />}
       >
         Crear Regla
       </Button>
-    </form>
+    </motion.form>
   );
 }

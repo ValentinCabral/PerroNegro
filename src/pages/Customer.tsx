@@ -9,7 +9,8 @@ import { useRedemptions } from '../hooks/useRedemptions';
 import { Card } from '../components/ui/Card';
 import { RewardsList } from '../components/RewardsList';
 import { RedemptionsList } from '../components/RedemptionsList';
-import { format } from 'date-fns';
+import { TransactionList } from '../components/TransactionList';
+
 
 export function Customer() {
   const { user } = useAuth();
@@ -18,10 +19,20 @@ export function Customer() {
   const { rewards, loading: rewardsLoading } = useRewards();
   const { redemptions, loading: redemptionsLoading, refresh: refreshRedemptions } = useRedemptions(user?.id);
 
+  // Verificar si todos los datos se han cargado
   if (pointsLoading || transactionsLoading || rewardsLoading || redemptionsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  // Si hay algún error al cargar los datos
+  if (!pointsData || !transactions || !rewards || !redemptions) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Error al cargar datos del cliente. Intenta actualizar la página.</p>
       </div>
     );
   }
@@ -43,7 +54,7 @@ export function Customer() {
               <h2 className="text-lg font-semibold">Total Gastado</h2>
               <CreditCard size={24} />
             </div>
-            <p className="text-3xl font-bold">${pointsData?.totalSpent || 0}</p>
+            <p className="text-3xl font-bold">${pointsData?.total_spent || 0}</p>
           </Card>
 
           <Card>
@@ -51,24 +62,34 @@ export function Customer() {
               <h2 className="text-lg font-semibold">Próxima Recompensa</h2>
               <History size={24} />
             </div>
-            {pointsData?.nextReward ? (
+            {pointsData?.next_reward ? (
               <>
-                <p className="text-sm text-gray-600 mb-2">{pointsData.nextReward.name}</p>
+                <p className="text-sm text-gray-600 mb-2">{pointsData.next_reward.name}</p>
                 <p className="text-sm font-medium text-yellow-600">
-                  Te faltan {pointsData.nextReward.pointsNeeded} pts
+                  Te faltan {
+                    pointsData.points >= pointsData.next_reward.points_cost
+                      ? 0
+                      : pointsData.next_reward.points_cost - pointsData.points
+                  } pts
                 </p>
                 <div className="relative pt-1">
-                  <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200 mt-2">
-                    <div
-                      style={{ width: `${pointsData.nextReward.progress}%` }}
-                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-yellow-400"
-                    ></div>
+                  <div
+                    className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200 mt-2"
+                    style={{
+                      width: `${
+                        pointsData.points >= pointsData.next_reward.points_cost
+                          ? 100
+                          : (pointsData.points / pointsData.next_reward.points_cost) * 100
+                      }%`
+                    }}
+                  >
+                    <div className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-yellow-400" />
                   </div>
                 </div>
               </>
             ) : (
               <p className="text-sm text-gray-600">
-                ¡Tienes puntos suficientes para canjear recompensas!
+                ¡No hay una próxima recompensa disponible!
               </p>
             )}
           </Card>
@@ -76,15 +97,18 @@ export function Customer() {
 
         <Card className="mb-8">
           <h2 className="text-xl font-semibold mb-6">Recompensas Disponibles</h2>
-          <RewardsList
+          {user && ( // Verifica si user existe
+            <RewardsList
             rewards={rewards}
             userPoints={pointsData?.points || 0}
+            userId={user.id} // Sólo pasa userId si user existe
             onRewardRedeem={() => {
-              refreshPoints();
-              refreshRedemptions();
-            }}
-          />
-        </Card>
+            refreshPoints();
+            refreshRedemptions();
+          }}
+        />
+      )}
+      </Card>
 
         <Card className="mb-8">
           <h2 className="text-xl font-semibold mb-6">Mis Canjes</h2>
@@ -98,7 +122,6 @@ export function Customer() {
               <thead>
                 <tr className="bg-gray-50">
                   <th className="px-4 py-2 text-left">Fecha</th>
-                  <th className="px-4 py-2 text-left">Tipo</th>
                   <th className="px-4 py-2 text-left">Monto</th>
                   <th className="px-4 py-2 text-left">Puntos</th>
                 </tr>
@@ -112,30 +135,19 @@ export function Customer() {
                     className="border-t"
                   >
                     <td className="px-4 py-2">
-                      {format(new Date(transaction.createdAt), 'dd/MM/yyyy')}
+                      {transaction.created_at} 
                     </td>
                     <td className="px-4 py-2">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          transaction.type === 'purchase'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-blue-100 text-blue-800'
-                        }`}
-                      >
-                        {transaction.type === 'purchase' ? 'Compra' : 'Canje'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2">
-                      {transaction.type === 'purchase' ? `$${transaction.amount}` : '-'}
+                      {`$${transaction.amount}`}
                     </td>
                     <td className="px-4 py-2">
                       <span
                         className={
-                          transaction.pointsEarned >= 0 ? 'text-green-600' : 'text-red-600'
+                          transaction.points_earned >= 0 ? 'text-green-600' : 'text-red-600'
                         }
                       >
                         {transaction.pointsEarned >= 0 ? '+' : ''}
-                        {transaction.pointsEarned} pts
+                        {transaction.points_earned >= 0 ? transaction.points_earned : '0'} pts
                       </span>
                     </td>
                   </motion.tr>
@@ -144,6 +156,47 @@ export function Customer() {
             </table>
           </div>
         </Card>
+        {/* <Card>
+          <h2 className="text-xl font-semibold mb-4">Historial de Transacciones</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="px-4 py-2 text-left">Fecha</th>
+                  <th className="px-4 py-2 text-left">Monto</th>
+                  <th className="px-4 py-2 text-left">Puntos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((transaction) => (
+                  <motion.tr
+                    key={transaction.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="border-t"
+                  >
+                    <td className="px-4 py-2">
+                      {transaction.created_at} 
+                    </td>
+                    <td className="px-4 py-2">
+                      {transaction.type === 'purchase' ? `$${transaction.amount}` : '-'}
+                    </td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={
+                          transaction.points_earned >= 0 ? 'text-green-600' : 'text-red-600'
+                        }
+                      >
+                        {transaction.points_earned >= 0 ? '+' : ''}
+                        {transaction.points_earned} pts
+                      </span>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card> */}
       </div>
     </div>
   );

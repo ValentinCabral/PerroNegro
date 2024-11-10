@@ -10,6 +10,7 @@ interface RewardsListProps {
   rewards: Reward[];
   userPoints?: number;
   isAdmin?: boolean;
+  userId: string; 
   onRewardDelete?: () => void;
   onRewardRedeem?: () => void;
 }
@@ -18,6 +19,7 @@ export function RewardsList({
   rewards, 
   userPoints = 0, 
   isAdmin = false,
+  userId,
   onRewardDelete,
   onRewardRedeem
 }: RewardsListProps) {
@@ -31,9 +33,9 @@ export function RewardsList({
     }
   };
 
-  const handleRedeem = async (rewardId: string) => {
+  const handleRedeem = async (rewardId: string, userId: string) => {
     try {
-      await api.post('/rewards/redeem', { rewardId });
+      await api.post('/rewards/redeem', { rewardId, userId});
       toast.success('¡Recompensa canjeada exitosamente!');
       onRewardRedeem?.();
     } catch (error) {
@@ -56,7 +58,7 @@ export function RewardsList({
               <h3 className="text-lg font-semibold">{reward.name}</h3>
             </div>
             <span className="bg-yellow-100 text-yellow-800 text-sm font-medium px-2.5 py-0.5 rounded">
-              {reward.pointsCost} pts
+              {reward.points_cost} pts
             </span>
           </div>
 
@@ -77,7 +79,7 @@ export function RewardsList({
                 <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200">
                   <div
                     style={{ 
-                      width: `${Math.min((userPoints / reward.pointsCost) * 100, 100)}%` 
+                      width: `${Math.min((userPoints / reward.points_cost) * 100, 100)}%` 
                     }}
                     className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-yellow-400"
                   />
@@ -85,13 +87,13 @@ export function RewardsList({
               </div>
               <Button
                 className="w-full"
-                disabled={userPoints < reward.pointsCost}
-                onClick={() => handleRedeem(reward.id)}
+                disabled={userPoints < reward.points_cost}
+                onClick={() => handleRedeem(reward.id, userId)} // Pasa userId como segundo argumento
                 icon={<Gift size={20} />}
               >
-                {userPoints >= reward.pointsCost 
+                {userPoints >= reward.points_cost 
                   ? 'Canjear Recompensa' 
-                  : `Te faltan ${reward.pointsCost - userPoints} pts`}
+                  : `Te faltan ${reward.points_cost - userPoints} pts`}
               </Button>
             </div>
           )}

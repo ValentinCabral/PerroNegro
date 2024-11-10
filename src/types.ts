@@ -6,50 +6,52 @@ export interface User {
   email: string;
   phone?: string;
   points: number;
-  totalSpent: number;
-  createdAt: string;
+  total_spent: number;
+  created_at: string;
 }
 
 export interface Transaction {
   id: string;
-  userId: string;
+  user_id: string;
   type: 'purchase' | 'redemption' | 'refund';
   amount: number;
   pointsEarned: number;
   description?: string;
-  redemptionId?: string;
-  createdAt: string;
+  redemption_id?: string;
+  created_at: string;
 }
 
 export interface LoyaltyRule {
   id: string;
   minAmount: number;
-  maxAmount?: number;
+  maxAmount?: number | null;
   pointsEarned: number;
   multiplier: number;
   description: string;
-  isActive: boolean;
-  createdAt: string;
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface Reward {
   id: string;
   name: string;
-  pointsCost: number;
+  points_cost: number;
   description: string;
-  isActive: boolean;
-  createdAt: string;
+  is_active: boolean;
+  created_at: string;
+  progress?: number; // Agrega el campo progress aquí
 }
+
 
 export interface Redemption {
   id: string;
-  userId: string;
-  rewardId: string;
-  pointsCost: number;
+  user_id: string;
+  reward_id: string;
+  points_cost: number;
   status: 'pending' | 'applied' | 'cancelled';
-  createdAt: string;
-  appliedAt?: string | null;
-  cancelledAt?: string | null;
+  created_at: string;
+  applied_at?: string | null;
+  cancelled_at?: string | null;
   user?: {
     id: string;
     name: string;
@@ -58,8 +60,26 @@ export interface Redemption {
   };
   reward?: {
     name: string;
-    pointsCost: number;
+    points_cost: number;
     description: string;
   };
   transaction?: Transaction;
+}
+
+export interface PointsData {
+  points: number;
+  total_spent: number;
+  next_reward?: {
+    id: string;
+    name: string;
+    description: string;
+    points_cost: number;
+  } | null;
+}
+
+export interface Transaction {
+  id: string;
+  amount: number;
+  points_earned: number;
+  created_at: string;
 }

@@ -79,6 +79,17 @@ export function LoginForm() {
             </div>
           </div>
 
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <Link
+                to="/forgot-password"
+                className="font-medium text-yellow-600 hover:text-yellow-500"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={isLoading}

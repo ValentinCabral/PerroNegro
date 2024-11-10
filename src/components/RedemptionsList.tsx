@@ -72,7 +72,7 @@ export function RedemptionsList({
               </div>
             </div>
             <span className="bg-yellow-100 text-yellow-800 text-sm font-medium px-2.5 py-0.5 rounded">
-              {redemption.pointsCost} pts
+              {redemption.points_cost} pts
             </span>
           </div>
 
@@ -80,7 +80,7 @@ export function RedemptionsList({
             <div>
               <p className="text-sm text-gray-600">Fecha de Canje</p>
               <p className="font-medium">
-                {format(new Date(redemption.createdAt), 'dd/MM/yyyy HH:mm')}
+                {format(new Date(redemption.created_at), 'dd/MM/yyyy HH:mm')}
               </p>
             </div>
             <div>

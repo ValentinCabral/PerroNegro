@@ -8,7 +8,9 @@ import { LoyaltyRuleForm } from '../components/LoyaltyRuleForm';
 import { RewardForm } from '../components/RewardForm';
 import { RewardsList } from '../components/RewardsList';
 import { RedemptionsList } from '../components/RedemptionsList';
+import { RulesList } from '../components/RulesList';
 import { Card } from '../components/ui/Card';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import api from '../services/api';
 import type { LoyaltyRule, Reward, Redemption } from '../types';
 
@@ -37,9 +39,21 @@ export function Admin() {
     try {
       setLoading(true);
       const { data } = await api.get('/loyalty-rules');
-      setRules(data);
+      // Transform snake_case to camelCase
+      const transformedRules = data.map((rule: any) => ({
+        id: rule.id,
+        minAmount: rule.min_amount,
+        maxAmount: rule.max_amount,
+        pointsEarned: rule.points_earned,
+        multiplier: rule.multiplier,
+        description: rule.description,
+        isActive: rule.is_active,
+        createdAt: rule.created_at
+      }));
+      setRules(transformedRules);
     } catch (error) {
       toast.error('Error al cargar las reglas');
+      setRules([]);
     } finally {
       setLoading(false);
     }
@@ -52,6 +66,7 @@ export function Admin() {
       setRewards(data);
     } catch (error) {
       toast.error('Error al cargar las recompensas');
+      setRewards([]);
     } finally {
       setLoading(false);
     }
@@ -64,6 +79,7 @@ export function Admin() {
       setRedemptions(data);
     } catch (error) {
       toast.error('Error al cargar los canjes');
+      setRedemptions([]);
     } finally {
       setLoading(false);
     }
@@ -101,117 +117,90 @@ export function Admin() {
           </nav>
         </div>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            {activeTab === 'customers' && (
-              <Card>
-                <CustomersList />
-              </Card>
-            )}
-
-            {activeTab === 'transactions' && (
-              <Card>
-                <TransactionForm onSuccess={() => toast.success('Compra registrada exitosamente')} />
-              </Card>
-            )}
-
-            {activeTab === 'rules' && (
-              <div className="space-y-6">
+        <ErrorBoundary>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeTab === 'customers' && (
                 <Card>
-                  <LoyaltyRuleForm onSuccess={fetchRules} />
+                  <CustomersList />
                 </Card>
+              )}
 
+              {activeTab === 'transactions' && (
                 <Card>
-                  <h2 className="text-xl font-semibold mb-4">Reglas Actuales</h2>
+                  <TransactionForm onSuccess={() => toast.success('Compra registrada exitosamente')} />
+                </Card>
+              )}
+
+              {activeTab === 'rules' && (
+                <div className="space-y-6">
+                  <Card>
+                    <h2 className="text-xl font-semibold mb-6">Nueva Regla de Puntos</h2>
+                    <LoyaltyRuleForm onSuccess={fetchRules} />
+                  </Card>
+
+                  <Card>
+                    <h2 className="text-xl font-semibold mb-6">Reglas Actuales</h2>
+                    {loading ? (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                      </div>
+                    ) : (
+                      <RulesList rules={rules} onRuleChange={fetchRules} />
+                    )}
+                  </Card>
+                </div>
+              )}
+
+              {activeTab === 'rewards' && (
+                <div className="space-y-6">
+                  <Card>
+                    <h2 className="text-xl font-semibold mb-6">Nueva Recompensa</h2>
+                    <RewardForm onSuccess={fetchRewards} />
+                  </Card>
+
+                  <Card>
+                    <h2 className="text-xl font-semibold mb-6">Recompensas Disponibles</h2>
+                    {loading ? (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                      </div>
+                    ) : (
+                      <RewardsList 
+                        rewards={rewards} 
+                        isAdmin 
+                        onRewardDelete={fetchRewards}
+                      />
+                    )}
+                  </Card>
+                </div>
+              )}
+
+              {activeTab === 'redemptions' && (
+                <Card>
+                  <h2 className="text-xl font-semibold mb-6">Historial de Canjes</h2>
                   {loading ? (
                     <div className="flex justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="px-4 py-2 text-left">Monto Mínimo</th>
-                            <th className="px-4 py-2 text-left">Monto Máximo</th>
-                            <th className="px-4 py-2 text-left">Puntos Base</th>
-                            <th className="px-4 py-2 text-left">Multiplicador</th>
-                            <th className="px-4 py-2 text-left">Descripción</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rules.map((rule) => (
-                            <motion.tr
-                              key={rule.id}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              className="border-b"
-                            >
-                              <td className="px-4 py-2">${rule.minAmount}</td>
-                              <td className="px-4 py-2">
-                                {rule.maxAmount ? `$${rule.maxAmount}` : 'Sin límite'}
-                              </td>
-                              <td className="px-4 py-2">{rule.pointsEarned} pts</td>
-                              <td className="px-4 py-2">x{rule.multiplier}</td>
-                              <td className="px-4 py-2">{rule.description}</td>
-                            </motion.tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </Card>
-              </div>
-            )}
-
-            {activeTab === 'rewards' && (
-              <div className="space-y-6">
-                <Card>
-                  <RewardForm onSuccess={fetchRewards} />
-                </Card>
-
-                <Card>
-                  <h2 className="text-xl font-semibold mb-4">Recompensas Disponibles</h2>
-                  {loading ? (
-                    <div className="flex justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                    </div>
-                  ) : (
-                    <RewardsList 
-                      rewards={rewards} 
+                    <RedemptionsList 
+                      redemptions={redemptions} 
                       isAdmin 
-                      onRewardDelete={fetchRewards}
+                      onStatusChange={fetchRedemptions}
                     />
                   )}
                 </Card>
-              </div>
-            )}
-
-            {activeTab === 'redemptions' && (
-              <Card>
-                <h2 className="text-xl font-semibold mb-6">Historial de Canjes</h2>
-                {loading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                  </div>
-                ) : (
-                  <RedemptionsList 
-                    redemptions={redemptions} 
-                    isAdmin 
-                    onStatusChange={fetchRedemptions}
-                  />
-                )}
-              </Card>
-            )}
-          </motion.div>
-        </AnimatePresence>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </ErrorBoundary>
       </div>
     </div>
   );

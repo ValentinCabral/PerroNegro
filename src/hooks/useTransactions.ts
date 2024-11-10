@@ -1,33 +1,35 @@
 import { useState, useEffect } from 'react';
-import { db, type TransactionData } from '../db/client';
+import api from '../services/api';
+import type { Transaction } from '../types';
 
 export function useTransactions(userId?: string) {
-  const [data, setData] = useState<TransactionData>({
-    transactions: [],
-    loading: true,
-    error: null
-  });
+  const [transactions, setTransactions] = useState<Transaction[]>([]); 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchTransactions = async () => {
     if (!userId) {
-      setData(prev => ({ ...prev, loading: false }));
+      setLoading(false);
       return;
     }
 
     try {
-      setData(prev => ({ ...prev, loading: true }));
-      const transactions = await db.getUserTransactions(userId);
-      setData({
-        transactions,
-        loading: false,
-        error: null
-      });
+      setLoading(true);
+      const response = await api.get(`/customers/${userId}/transactions`);
+      setTransactions(response.data.map((transaction: Transaction) => ({
+        id: transaction.id, 
+        amount: Number(transaction.amount), 
+        points_earned: Number(transaction.points_earned),
+        created_at: transaction.created_at 
+      })));
+      setError(null);
     } catch (err) {
-      setData({
-        transactions: [],
-        loading: false,
-        error: 'Error al cargar las transacciones'
-      });
+      console.error('Error en useTransactions:', err);
+      setError('Error al cargar las transacciones');
+      setTransactions([]); // Actualiza el estado con un array vacío en caso de error
+      setLoading(false); 
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -35,5 +37,5 @@ export function useTransactions(userId?: string) {
     fetchTransactions();
   }, [userId]);
 
-  return { ...data, refresh: fetchTransactions };
+  return { transactions, loading, error, refresh: fetchTransactions };
 }

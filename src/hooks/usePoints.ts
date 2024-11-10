@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { db, type PointsData } from '../db/client';
+import api from '../services/api';
+import type { PointsData, Reward } from '../types'; 
 
 export function usePoints(userId?: string) {
   const [data, setData] = useState<PointsData | null>(null);
@@ -14,11 +15,18 @@ export function usePoints(userId?: string) {
 
     try {
       setLoading(true);
-      const pointsData = await db.getUserPoints(userId);
-      setData(pointsData);
+      const { data: pointsData } = await api.get(`/customers/${userId}/points`);
+      const { data: nextRewards } = await api.get(`/customers/${userId}/next-rewards`);
+      setData({
+        // Convertir los valores a números antes de configurar el estado
+        points: Number(pointsData.points),
+        total_spent: Number(pointsData.total_spent),
+        next_reward: nextRewards.length > 0 ? nextRewards[0] : null
+      });
       setError(null);
     } catch (err) {
-      setError('Error al cargar los puntos');
+      console.error('Error en usePoints:', err);
+      setError('Error al cargar los puntos y las próximas recompensas');
       setData(null);
     } finally {
       setLoading(false);
