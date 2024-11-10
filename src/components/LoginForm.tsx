@@ -79,7 +79,7 @@ export function LoginForm() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          {/* <div className="flex items-center justify-between">
             <div className="text-sm">
               <Link
                 to="/forgot-password"
@@ -88,7 +88,7 @@ export function LoginForm() {
                 ¿Olvidaste tu contraseña?
               </Link>
             </div>
-          </div>
+          </div> */}
 
           <button
             type="submit"
