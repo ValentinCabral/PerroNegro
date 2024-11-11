@@ -4,6 +4,7 @@ import { dirname, join } from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import fs from 'fs';
+import process from 'process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,8 +30,11 @@ const backupDatabase = (req, res) => {
   const backupFileName = `database_backup_${currentDate}.sqlite`;
   const backupPath = join(__dirname, backupFileName); // Ruta al archivo de respaldo
 
-  // Copiar el archivo database.sqlite a database_backup_AAAA-MM-DD.sqlite
-  fs.copyFile(join(__dirname, 'database.sqlite'), backupPath, (err) => {
+  // Obtener el directorio del volumen de Railway
+  const dbVolumePath = process.env.DB_VOLUME_PATH || '/app/db-data'; // Reemplaza '/app/db-data' si es necesario
+
+  // Copiar el archivo database.sqlite del volumen de Railway al archivo de backup
+  fs.copyFile(join(dbVolumePath, 'database.sqlite'), backupPath, (err) => {
     if (err) {
       console.error('Error al copiar el archivo:', err);
       res.status(500).send('Error al generar el backup');
@@ -46,6 +50,7 @@ const backupDatabase = (req, res) => {
     });
   });
 };
+
 
 
 // Enable foreign keys and WAL mode for better performance
