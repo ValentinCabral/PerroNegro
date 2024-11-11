@@ -28,19 +28,21 @@ app.use('/api/rewards', rewardRoutes);
 
 // Endpoint para descargar el backup de la base de datos
 app.get('/download-db', (req, res) => {
+  // Ruta absoluta del archivo de la base de datos
   const filePath = process.env.DATABASE_PATH || path.join(__dirname, 'db', 'database.sqlite');
-  
-  if (fs.existsSync(filePath)) {
-    res.download(filePath, 'database.sqlite', (err) => {
-      if (err) {
-        console.error('Error al descargar la base de datos:', err);
-        res.status(500).send('Error al descargar la base de datos');
-      }
-    });
-  } else {
-    res.status(404).send('Database file not found');
-  }
+
+  // Nombre con el que se descargará el archivo
+  const downloadFileName = 'database.sqlite';
+
+  // Envía el archivo con el nombre y extensión correctos
+  res.download(filePath, downloadFileName, (err) => {
+    if (err) {
+      console.error('Error al descargar el archivo:', err);
+      res.status(500).send('Error al descargar el archivo');
+    }
+  });
 });
+
 
 // Servir los archivos estáticos generados por Vite en la carpeta "dist"
 app.use(express.static(join(__dirname, '../dist')));
