@@ -281,4 +281,4 @@ process.on('SIGINT', () => {
   });
 });
 
-export { db, all, get, run, runTransaction, downloadDatabase};
+export { db, all, get, run, runTransaction, backupDatabase};
