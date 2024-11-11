@@ -19,6 +19,20 @@ const db = new sqlite3.Database(join(__dirname, 'database.sqlite'), (err) => {
   }
 });
 
+// Crear función de descarga de la base de datos
+const downloadDatabase = (req, res) => {
+  // Especifica el nombre del archivo para la descarga
+  const downloadFileName = 'database.sqlite';
+
+  // Envía el archivo .sqlite con el nombre correcto
+  res.download(dbPath, downloadFileName, (err) => {
+    if (err) {
+      console.error('Error al descargar el archivo:', err);
+      res.status(500).send('Error al descargar el archivo');
+    }
+  });
+};
+
 // Enable foreign keys and WAL mode for better performance
 db.serialize(() => {
   db.run('PRAGMA foreign_keys = ON');
@@ -209,4 +223,4 @@ process.on('SIGINT', () => {
   });
 });
 
-export { db, all, get, run, runTransaction };
+export { db, all, get, run, runTransaction, downloadDatabase};
