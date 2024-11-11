@@ -34,7 +34,7 @@ app.get('/api/backup', (req, res) => {
       return res.status(404).json({ message: 'Database file not found' });
     }
 
-    res.download(dbPath, 'database-backup.sqlite', (err) => {
+    res.download('./server/database.sqlite', 'database-backup.sqlite', (err) => {
       if (err) {
         console.error('Error al descargar el archivo:', err);
         res.status(500).json({ message: 'Error downloading the backup file' });
