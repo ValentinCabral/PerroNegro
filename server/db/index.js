@@ -21,6 +21,7 @@ const db = new sqlite3.Database(join(__dirname, 'database.sqlite'), (err) => {
 
 // Función para generar el respaldo en formato SQL
 const backupDatabase = (req, res) => {
+const backupDatabase = (req, res) => {
   // Nombre del archivo de respaldo
   const backupFileName = 'backup_' + Date.now() + '.sql';
   const backupPath = join(__dirname, backupFileName);
@@ -53,7 +54,7 @@ const backupDatabase = (req, res) => {
 
         tables.forEach((table) => {
           const tableName = table.name;
-          
+
           // Recuperar los datos de cada tabla
           db.all(`SELECT * FROM ${tableName}`, (err, rows) => {
             if (err) {
