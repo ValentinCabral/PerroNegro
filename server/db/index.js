@@ -4,7 +4,6 @@ import { dirname, join } from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import fs from 'fs';
-import process from 'process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -21,69 +20,176 @@ const db = new sqlite3.Database(join(__dirname, 'database.sqlite'), (err) => {
   }
 });
 
-// Función para descargar el archivo database.sqlite
-const backupDatabase = (req, res) => {
-  // Obtener la fecha actual en formato AAAA-MM-DD
-  const currentDate = new Date().toISOString().slice(0, 10);
+// Función modificada para crear un nuevo archivo de backup con los datos actuales
+const backupDatabase = async (req, res) => {
+  try {
+    // Obtener la fecha actual en formato AAAA-MM-DD
+    const currentDate = new Date().toISOString().slice(0, 10);
+    const backupFileName = `database_backup_${currentDate}.sqlite`;
+    const backupDir = join(__dirname, 'temp');
+    const backupPath = join(backupDir, backupFileName);
 
-  // Nombre del archivo de respaldo con fecha
-  const backupFileName = `database_backup_${currentDate}.sqlite`;
-  const backupPath = join(__dirname, backupFileName); // Ruta al archivo de respaldo
+    // Verificar si la carpeta "temp" existe, si no, crearla
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir);
+    }
 
-  // Crear una nueva conexión a la base de datos original
-  const originalDb = new sqlite3.Database(join(__dirname, 'database.sqlite')); 
-
-  // Crear una nueva conexión a la base de datos de backup
-  const backupDb = new sqlite3.Database(backupPath); 
-
-  // Función para exportar datos de una tabla
-  const exportTable = (tableName, callback) => {
-    originalDb.each(`SELECT * FROM ${tableName}`, (err, row) => {
+    // Crear una nueva base de datos temporal para el respaldo
+    const backupDb = new sqlite3.Database(backupPath, (err) => {
       if (err) {
-        console.error(`Error exporting ${tableName} data:`, err);
-        originalDb.close();
-        backupDb.close();
-        res.status(500).send('Error al generar el backup');
-        return;
+        throw new Error('Error creating backup database: ' + err.message);
       }
+    });
 
-      // Insertar los datos de la tabla en la base de datos de backup
-      backupDb.run(`INSERT INTO ${tableName} VALUES (${Array(Object.keys(row).length).fill('?').join(',')})`,
-        Object.values(row),
-        (err) => {
-          if (err) {
-            console.error(`Error inserting ${tableName} data:`, err);
-          }
-        }
-      );
-    }, callback);
-  };
-
-  // Exportar datos de todas las tablas
-  exportTable('users', () => {
-    exportTable('transactions', () => {
-      exportTable('loyalty_rules', () => {
-        exportTable('rewards', () => {
-          exportTable('redemptions', () => {
-            // Cerrar las conexiones
-            originalDb.close();
-            backupDb.close();
-
-            // Enviar el archivo de respaldo como descarga
-            res.download(backupPath, backupFileName, (err) => {
-              if (err) {
-                console.error('Error during file download:', err);
-                res.status(500).send('Error al descargar el archivo');
-              }
-            });
-          });
+    // Función auxiliar para ejecutar queries en la base de datos de backup
+    const runBackupQuery = (query, params = []) => {
+      return new Promise((resolve, reject) => {
+        backupDb.run(query, params, function(err) {
+          if (err) reject(err);
+          else resolve(this);
         });
       });
+    };
+
+    // Función auxiliar para obtener todos los registros
+    const getAllRows = (query, params = []) => {
+      return new Promise((resolve, reject) => {
+        db.all(query, params, (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        });
+      });
+    };
+
+    // Crear todas las tablas en la nueva base de datos
+    await runBackupQuery('PRAGMA foreign_keys = ON');
+    await runBackupQuery('PRAGMA journal_mode = WAL');
+
+    // Crear las tablas
+    const tableQueries = [
+      `CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        role TEXT NOT NULL CHECK (role IN ('admin', 'customer')),
+        dni TEXT UNIQUE,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        phone TEXT,
+        password TEXT NOT NULL,
+        points INTEGER DEFAULT 0,
+        total_spent REAL DEFAULT 0,
+        reset_token TEXT,
+        reset_token_expires DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS transactions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('purchase', 'redemption')),
+        amount REAL NOT NULL,
+        points_earned INTEGER NOT NULL,
+        description TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS loyalty_rules (
+        id TEXT PRIMARY KEY,
+        min_amount REAL NOT NULL,
+        max_amount REAL,
+        points_earned INTEGER NOT NULL,
+        multiplier REAL DEFAULT 1,
+        description TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        CHECK (min_amount >= 0),
+        CHECK (max_amount IS NULL OR max_amount > min_amount)
+      )`,
+      `CREATE TABLE IF NOT EXISTS rewards (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        points_cost INTEGER NOT NULL,
+        description TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        CHECK (points_cost > 0)
+      )`,
+      `CREATE TABLE IF NOT EXISTS redemptions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        reward_id TEXT NOT NULL,
+        status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'applied', 'cancelled')),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        applied_at DATETIME,
+        cancelled_at DATETIME,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (reward_id) REFERENCES rewards(id) ON DELETE CASCADE
+      )`
+    ];
+
+    // Ejecutar las queries de creación de tablas
+    for (const query of tableQueries) {
+      await runBackupQuery(query);
+    }
+
+    // Obtener y copiar datos de cada tabla
+    const tables = ['users', 'transactions', 'loyalty_rules', 'rewards', 'redemptions'];
+    
+    for (const table of tables) {
+      const rows = await getAllRows(`SELECT * FROM ${table}`);
+      
+      if (rows.length > 0) {
+        const columns = Object.keys(rows[0]).join(', ');
+        const placeholders = Object.keys(rows[0]).map(() => '?').join(', ');
+        
+        for (const row of rows) {
+          const values = Object.values(row);
+          await runBackupQuery(
+            `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`,
+            values
+          );
+        }
+      }
+    }
+
+    // Crear índices
+    const indexQueries = [
+      'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)',
+      'CREATE INDEX IF NOT EXISTS idx_users_dni ON users(dni)',
+      'CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_redemptions_user_id ON redemptions(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_redemptions_reward_id ON redemptions(reward_id)'
+    ];
+
+    for (const query of indexQueries) {
+      await runBackupQuery(query);
+    }
+
+    // Cerrar la conexión de la base de datos de backup
+    await new Promise((resolve, reject) => {
+      backupDb.close((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
     });
-  });
+
+    // Enviar el archivo como descarga
+    res.download(backupPath, backupFileName, (err) => {
+      if (err) {
+        console.error('Error during file download:', err);
+        res.status(500).send('Error al descargar el archivo');
+      }
+      // Eliminar el archivo temporal después de la descarga
+      fs.unlink(backupPath, (unlinkErr) => {
+        if (unlinkErr) {
+          console.error('Error deleting temporary backup file:', unlinkErr);
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error('Error during backup:', error);
+    res.status(500).send('Error al generar el backup');
+  }
 };
-
-
 
 // Enable foreign keys and WAL mode for better performance
 db.serialize(() => {
@@ -275,4 +381,5 @@ process.on('SIGINT', () => {
   });
 });
 
-export { db, all, get, run, runTransaction, backupDatabase};
+export { db, all, get, run, runTransaction, backupDatabase };
+
