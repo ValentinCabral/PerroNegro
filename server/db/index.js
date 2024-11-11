@@ -3,21 +3,29 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import fs from 'fs';
 
+// Obtener la ruta de la base de datos
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Enable verbose mode for debugging
-sqlite3.verbose();
-
-// Crear la conexión a la base de datos en una ruta persistente
+// Usar la variable de entorno DATABASE_PATH o, por defecto, /mnt/data/database.sqlite
 const dbPath = process.env.DATABASE_PATH || join(__dirname, '/mnt/data/database.sqlite');
 
+// Asegurarse de que el directorio exista (si no, crearlo)
+const dbDir = join(__dirname, '/mnt/data');
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true }); // Crea el directorio si no existe
+}
+
+sqlite3.verbose();
+
+// Crear la conexión a la base de datos en la ruta persistente
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
-    console.error('Error connecting to database:', err);
+    console.error('Error al conectar a la base de datos:', err);
   } else {
-    console.log('Connected to SQLite database');
+    console.log(`Conectado a la base de datos en ${dbPath}`);
   }
 });
 
