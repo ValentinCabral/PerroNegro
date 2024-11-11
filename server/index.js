@@ -9,6 +9,7 @@ import transactionRoutes from './routes/transactions.js';
 import loyaltyRoutes from './routes/loyalty.js';
 import rewardRoutes from './routes/rewards.js';
 import { db } from './db/index.js';
+import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -26,20 +27,14 @@ app.use('/api/loyalty-rules', loyaltyRoutes);
 app.use('/api/rewards', rewardRoutes);
 
 // Endpoint para descargar el backup de la base de datos
-app.get('/api/backup', (req, res) => {
-  const dbPath = join(__dirname, 'database.sqlite');
+app.get('/download-db', (req, res) => {
+  const filePath = path.join(__dirname, 'db', 'database.sqlite');
   
-  fs.access(dbPath, fs.constants.F_OK, (err) => {
+  res.download(filePath, 'database.sqlite', (err) => {
     if (err) {
-      return res.status(404).json({ message: 'Database file not found' });
+      console.error('Error al descargar la base de datos:', err);
+      res.status(500).send('Error al descargar la base de datos');
     }
-
-    res.download('./server/db/database.sqlite', 'database-backup.sqlite', (err) => {
-      if (err) {
-        console.error('Error al descargar el archivo:', err);
-        res.status(500).json({ message: 'Error downloading the backup file' });
-      }
-    });
   });
 });
 
