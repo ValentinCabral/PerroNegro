@@ -68,7 +68,7 @@ export function CustomersList() {
   const handleSendEmail = () => {
     const emailSubject = '¡Ofertas especiales para ti! PERRO NEGRO | Clothing'; // Asunto del correo
     const emailBody = `
-¡Hola [Nombre del Cliente]! 🌟
+¡Hola! 🌟
 
 ¡Gracias por ser parte de la familia Perro Negro! 🎉
 
