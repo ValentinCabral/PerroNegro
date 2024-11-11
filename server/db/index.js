@@ -21,7 +21,6 @@ const db = new sqlite3.Database(join(__dirname, 'database.sqlite'), (err) => {
 
 // Función para generar el respaldo en formato SQL
 const backupDatabase = (req, res) => {
-const backupDatabase = (req, res) => {
   // Nombre del archivo de respaldo
   const backupFileName = 'backup_' + Date.now() + '.sql';
   const backupPath = join(__dirname, backupFileName);
