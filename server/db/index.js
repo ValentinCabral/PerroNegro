@@ -30,23 +30,55 @@ const backupDatabase = (req, res) => {
   const backupFileName = `database_backup_${currentDate}.sqlite`;
   const backupPath = join(__dirname, backupFileName); // Ruta al archivo de respaldo
 
-  // Obtener el directorio del volumen de Railway
-  const dbVolumePath = process.env.DB_VOLUME_PATH || '/app/db-data'; // Reemplaza '/app/db-data' si es necesario
+  // Crear una nueva conexión a la base de datos original
+  const originalDb = new sqlite3.Database(join(__dirname, 'database.sqlite')); 
 
-  // Copiar el archivo database.sqlite del volumen de Railway al archivo de backup
-  fs.copyFile(join(dbVolumePath, 'database.sqlite'), backupPath, (err) => {
-    if (err) {
-      console.error('Error al copiar el archivo:', err);
-      res.status(500).send('Error al generar el backup');
-      return; 
-    }
+  // Crear una nueva conexión a la base de datos de backup
+  const backupDb = new sqlite3.Database(backupPath); 
 
-    // Enviar el archivo de respaldo como descarga
-    res.download(backupPath, backupFileName, (err) => {
+  // Función para exportar datos de una tabla
+  const exportTable = (tableName, callback) => {
+    originalDb.each(`SELECT * FROM ${tableName}`, (err, row) => {
       if (err) {
-        console.error('Error during file download:', err);
-        res.status(500).send('Error al descargar el archivo');
+        console.error(`Error exporting ${tableName} data:`, err);
+        originalDb.close();
+        backupDb.close();
+        res.status(500).send('Error al generar el backup');
+        return;
       }
+
+      // Insertar los datos de la tabla en la base de datos de backup
+      backupDb.run(`INSERT INTO ${tableName} VALUES (${Array(Object.keys(row).length).fill('?').join(',')})`,
+        Object.values(row),
+        (err) => {
+          if (err) {
+            console.error(`Error inserting ${tableName} data:`, err);
+          }
+        }
+      );
+    }, callback);
+  };
+
+  // Exportar datos de todas las tablas
+  exportTable('users', () => {
+    exportTable('transactions', () => {
+      exportTable('loyalty_rules', () => {
+        exportTable('rewards', () => {
+          exportTable('redemptions', () => {
+            // Cerrar las conexiones
+            originalDb.close();
+            backupDb.close();
+
+            // Enviar el archivo de respaldo como descarga
+            res.download(backupPath, backupFileName, (err) => {
+              if (err) {
+                console.error('Error during file download:', err);
+                res.status(500).send('Error al descargar el archivo');
+              }
+            });
+          });
+        });
+      });
     });
   });
 };
