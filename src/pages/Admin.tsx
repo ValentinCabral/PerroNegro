@@ -86,20 +86,20 @@ export function Admin() {
   };
 
   const downloadBackup = async () => {
-    try {
-      const response = await api.get('/backup', { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'database-backup.sqlite');
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      toast.success('Backup descargado exitosamente');
-    } catch (error) {
-      toast.error('Error al descargar el backup');
-    }
-  };
+  try {
+    const response = await api.get('/download-db', { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'database-backup.sqlite');
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode.removeChild(link);
+    toast.success('Backup descargado exitosamente');
+  } catch (error) {
+    toast.error('Error al descargar el backup');
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
