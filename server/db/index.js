@@ -209,6 +209,24 @@ const runTransaction = async (queries) => {
   });
 };
 
+// Backup function to download the database file
+const backupDatabase = (req, res) => {
+  // Obtener la fecha actual en formato AAAA-MM-DD
+  const currentDate = new Date().toISOString().slice(0, 10);
+
+  // Nombre del archivo de respaldo con fecha
+  const backupFileName = `database_backup_${currentDate}.sqlite`;
+  const backupPath = dbPath; // Ruta al archivo database.sqlite
+
+  // Enviar el archivo como descarga
+  res.download(backupPath, backupFileName, (err) => {
+    if (err) {
+      console.error('Error during file download:', err);
+      res.status(500).send('Error al descargar el archivo');
+    }
+  });
+};
+
 process.on('SIGINT', () => {
   db.close((err) => {
     if (err) {
