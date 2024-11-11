@@ -8,6 +8,7 @@ import customerRoutes from './routes/customers.js';
 import transactionRoutes from './routes/transactions.js';
 import loyaltyRoutes from './routes/loyalty.js';
 import rewardRoutes from './routes/rewards.js';
+import backupRoutes from './routes/backup.js';
 import { db } from './db/index.js';
 import { backupDatabase } from './db/index.js';
 import path from 'path';
@@ -26,9 +27,10 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/loyalty-rules', loyaltyRoutes);
 app.use('/api/rewards', rewardRoutes);
+app.use('/api/backup', backupRoutes); 
 
 // Endpoint para descargar el backup de la base de datos
-app.get('/download-db', backupDatabase);
+app.get('/backup', backupDatabase);
 
 
 // Servir los archivos estáticos generados por Vite en la carpeta "dist"

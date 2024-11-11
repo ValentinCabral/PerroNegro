@@ -12,6 +12,7 @@ import { RulesList } from '../components/RulesList';
 import { Card } from '../components/ui/Card';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import api from '../services/api';
+import { useDownloadBackup } from '../hooks/useDownloadBackup';
 import type { LoyaltyRule, Reward, Redemption } from '../types';
 
 const tabs = [
@@ -29,6 +30,7 @@ export function Admin() {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [loading, setLoading] = useState(false);
+  const { downloadBackup, loading: backupLoading } = useDownloadBackup();
 
   useEffect(() => {
     if (activeTab === 'rules') fetchRules();
@@ -84,22 +86,6 @@ export function Admin() {
       setLoading(false);
     }
   };
-
-  const downloadBackup = async () => {
-  try {
-    const response = await api.get('/download-db', { responseType: 'blob' });
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'database-backup.sqlite');
-    document.body.appendChild(link);
-    link.click();
-    link.parentNode.removeChild(link);
-    toast.success('Backup descargado exitosamente');
-  } catch (error) {
-    toast.error('Error al descargar el backup');
-  }
-};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -214,8 +200,9 @@ export function Admin() {
                   <button
                     onClick={downloadBackup}
                     className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                    disabled={backupLoading}
                   >
-                    Descargar Backup
+                    {backupLoading ? 'Descargando...' : 'Descargar Backup'}
                   </button>
                 </Card>
               )}

@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,77 +20,24 @@ const db = new sqlite3.Database(join(__dirname, 'database.sqlite'), (err) => {
   }
 });
 
-// Función para generar el respaldo en formato SQL
+// Función para descargar el archivo database.sqlite
 const backupDatabase = (req, res) => {
-  // Nombre del archivo de respaldo
-  const backupFileName = 'backup_' + Date.now() + '.sql';
-  const backupPath = join(__dirname, backupFileName);
+  // Obtener la fecha actual en formato AAAA-MM-DD
+  const currentDate = new Date().toISOString().slice(0, 10);
 
-  // Crear el archivo de respaldo
-  const backupFile = fs.createWriteStream(backupPath);
+  // Nombre del archivo de respaldo con fecha
+  const backupFileName = `database_backup_${currentDate}.sqlite`;
+  const backupPath = join(__dirname, 'database.sqlite'); // Ruta al archivo database.sqlite
 
-  // Exportar la base de datos a un archivo .sql
-  db.serialize(() => {
-    // Generar los scripts de la base de datos (estructura y datos)
-    db.all("SELECT sql FROM sqlite_master WHERE type='table'", (err, tables) => {
-      if (err) {
-        console.error('Error retrieving tables for backup:', err);
-        res.status(500).send('Error al generar el backup');
-        return;
-      }
-
-      // Escribir los scripts de creación de tablas
-      tables.forEach((table) => {
-        backupFile.write(`${table.sql};\n\n`);
-      });
-
-      // Generar los datos de las tablas
-      db.all("SELECT name FROM sqlite_master WHERE type='table'", (err, tables) => {
-        if (err) {
-          console.error('Error retrieving table names for backup:', err);
-          res.status(500).send('Error al generar el backup');
-          return;
-        }
-
-        tables.forEach((table) => {
-          const tableName = table.name;
-
-          // Recuperar los datos de cada tabla
-          db.all(`SELECT * FROM ${tableName}`, (err, rows) => {
-            if (err) {
-              console.error(`Error retrieving data from table ${tableName}:`, err);
-              return;
-            }
-
-            // Insertar datos en el archivo de respaldo
-            rows.forEach((row) => {
-              const columns = Object.keys(row).join(', ');
-              const values = Object.values(row).map((value) => `'${value}'`).join(', ');
-              const insertStatement = `INSERT INTO ${tableName} (${columns}) VALUES (${values});\n`;
-              backupFile.write(insertStatement);
-            });
-          });
-        });
-      });
-
-      // Finalizar el archivo de respaldo
-      backupFile.end(() => {
-        console.log('Backup file created:', backupPath);
-        // Enviar el archivo de respaldo como descarga
-        res.download(backupPath, backupFileName, (err) => {
-          if (err) {
-            console.error('Error during file download:', err);
-            res.status(500).send('Error al descargar el archivo');
-          }
-          // Eliminar el archivo temporal después de la descarga
-          fs.unlink(backupPath, (err) => {
-            if (err) console.error('Error deleting backup file:', err);
-          });
-        });
-      });
-    });
+  // Enviar el archivo como descarga
+  res.download(backupPath, backupFileName, (err) => {
+    if (err) {
+      console.error('Error during file download:', err);
+      res.status(500).send('Error al descargar el archivo');
+    }
   });
 };
+
 
 // Enable foreign keys and WAL mode for better performance
 db.serialize(() => {

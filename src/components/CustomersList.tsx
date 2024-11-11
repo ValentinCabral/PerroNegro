@@ -7,6 +7,7 @@ import { EditCustomerForm } from './EditCustomerForm';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import type { User } from '../types';
+import logo from '../utils/logo.png'
 
 export function CustomersList() {
   const [customers, setCustomers] = useState<User[]>([]);
@@ -64,6 +65,49 @@ export function CustomersList() {
       customer.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleSendEmail = () => {
+    const emailSubject = '¡Ofertas especiales para ti! PERRO NEGRO | Clothing'; // Asunto del correo
+    const emailBody = `
+¡Hola [Nombre del Cliente]! 🌟
+
+¡Gracias por ser parte de la familia Perro Negro! 🎉
+
+Tenemos algo increíble para ti: ¡descuentos exclusivos y ofertas irresistibles en nuestra nueva colección! Renueva tu estilo con nuestras prendas y accesorios con un toque único.
+
+🛍️ **Descubre las ofertas y mucho más en nuestra tienda:**
+[Enlace a tu tienda] - *Haz clic aquí para ver las promociones*
+
+📦 **Lo que te espera:**
+- Ofertas especiales en productos seleccionados
+- Ropa y accesorios de última tendencia
+- Descuentos solo para ti, ¡aprovecha antes de que se acaben!
+
+Nos encantaría verte con tu nueva compra. ¿A qué esperas para aprovechar nuestras ofertas?
+
+Visítanos y haz tu pedido ahora. ¡Te esperamos!
+
+---
+
+PERRO NEGRO | Clothing
+STREETWEAR | OVERSIZE
+La combinación de estilo y comodidad sin género
+📍San Martin 556, Rio Cuarto
+⏰ 09:30 a 13:00hs
+⏰ 17:00 a 20:30hs
+🗓 LUN a SÁB
+
+    `;
+
+    // Obtener las direcciones de correo electrónico de los clientes
+    const emailAddresses = filteredCustomers.map((customer) => customer.email).join(',');
+
+    // Crear el enlace mailto
+    const mailtoLink = `mailto:${emailAddresses}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+
+    // Abrir el correo electrónico en el navegador
+    window.location.href = mailtoLink;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -79,6 +123,14 @@ export function CustomersList() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
         </div>
       </div>
+
+      <Button
+        variant="primary"
+        className="mb-4"
+        onClick={handleSendEmail}
+      >
+        Enviar Correo a Clientes
+      </Button>
 
       {editingCustomer && (
         <EditCustomerForm
