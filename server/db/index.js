@@ -23,6 +23,24 @@ const db = new sqlite3.Database(dbPath, (err) => {
   }
 });
 
+// Backup function to download the database file
+const backupDatabase = (req, res) => {
+  // Obtener la fecha actual en formato AAAA-MM-DD
+  const currentDate = new Date().toISOString().slice(0, 10);
+
+  // Nombre del archivo de respaldo con fecha
+  const backupFileName = `database_backup_${currentDate}.sqlite`;
+  const backupPath = dbPath; // Ruta al archivo database.sqlite
+
+  // Enviar el archivo como descarga
+  res.download(backupPath, backupFileName, (err) => {
+    if (err) {
+      console.error('Error during file download:', err);
+      res.status(500).send('Error al descargar el archivo');
+    }
+  });
+};
+
 // Check if the database file exists before running migrations
 if (!existsSync(dbPath)) {
   console.log('Database file does not exist, creating database and tables...');
@@ -206,24 +224,6 @@ const runTransaction = async (queries) => {
         db.run('ROLLBACK', () => reject(err));
       }
     });
-  });
-};
-
-// Backup function to download the database file
-const backupDatabase = (req, res) => {
-  // Obtener la fecha actual en formato AAAA-MM-DD
-  const currentDate = new Date().toISOString().slice(0, 10);
-
-  // Nombre del archivo de respaldo con fecha
-  const backupFileName = `database_backup_${currentDate}.sqlite`;
-  const backupPath = dbPath; // Ruta al archivo database.sqlite
-
-  // Enviar el archivo como descarga
-  res.download(backupPath, backupFileName, (err) => {
-    if (err) {
-      console.error('Error during file download:', err);
-      res.status(500).send('Error al descargar el archivo');
-    }
   });
 };
 
