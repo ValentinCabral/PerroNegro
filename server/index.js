@@ -9,6 +9,7 @@ import transactionRoutes from './routes/transactions.js';
 import loyaltyRoutes from './routes/loyalty.js';
 import rewardRoutes from './routes/rewards.js';
 import { db } from './db/index.js';
+import { downloadDatabase } from './db/index.js';
 import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
