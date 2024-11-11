@@ -1,6 +1,6 @@
 import sqlite3 from 'sqlite3';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname, join, existsSync } from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -11,8 +11,11 @@ const __dirname = dirname(__filename);
 // Enable verbose mode for debugging
 sqlite3.verbose();
 
-// Create database connection with proper configuration
-const db = new sqlite3.Database(join(__dirname, 'database.sqlite'), (err) => {
+// Define the path where the database file will be located
+const dbPath = join(__dirname, 'database.sqlite');
+
+// Create database connection
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Error connecting to database:', err);
   } else {
@@ -20,125 +23,113 @@ const db = new sqlite3.Database(join(__dirname, 'database.sqlite'), (err) => {
   }
 });
 
-// Función para descargar el archivo database.sqlite
-const backupDatabase = (req, res) => {
-  // Obtener la fecha actual en formato AAAA-MM-DD
-  const currentDate = new Date().toISOString().slice(0, 10);
+// Check if the database file exists before running migrations
+if (!existsSync(dbPath)) {
+  console.log('Database file does not exist, creating database and tables...');
 
-  // Nombre del archivo de respaldo con fecha
-  const backupFileName = `database_backup_${currentDate}.sqlite`;
-  const backupPath = join(__dirname, 'database.sqlite'); // Ruta al archivo database.sqlite
+  // Enable foreign keys and WAL mode for better performance
+  db.serialize(() => {
+    db.run('PRAGMA foreign_keys = ON');
+    db.run('PRAGMA journal_mode = WAL');
 
-  // Enviar el archivo como descarga
-  res.download(backupPath, backupFileName, (err) => {
-    if (err) {
-      console.error('Error during file download:', err);
-      res.status(500).send('Error al descargar el archivo');
-    }
+    // Create tables
+    db.run(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        role TEXT NOT NULL CHECK (role IN ('admin', 'customer')),
+        dni TEXT UNIQUE,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        phone TEXT,
+        password TEXT NOT NULL,
+        points INTEGER DEFAULT 0,
+        total_spent REAL DEFAULT 0,
+        reset_token TEXT,
+        reset_token_expires DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS transactions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('purchase', 'redemption')),
+        amount REAL NOT NULL,
+        points_earned INTEGER NOT NULL,
+        description TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS loyalty_rules (
+        id TEXT PRIMARY KEY,
+        min_amount REAL NOT NULL,
+        max_amount REAL,
+        points_earned INTEGER NOT NULL,
+        multiplier REAL DEFAULT 1,
+        description TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        CHECK (min_amount >= 0),
+        CHECK (max_amount IS NULL OR max_amount > min_amount)
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS rewards (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        points_cost INTEGER NOT NULL,
+        description TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        CHECK (points_cost > 0)
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS redemptions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        reward_id TEXT NOT NULL,
+        status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'applied', 'cancelled')),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        applied_at DATETIME,
+        cancelled_at DATETIME,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (reward_id) REFERENCES rewards(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create indices for better query performance
+    db.run('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_users_dni ON users(dni)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_redemptions_user_id ON redemptions(user_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_redemptions_reward_id ON redemptions(reward_id)');
+
+    // Initialize admin user if not exists
+    const adminId = crypto.randomBytes(16).toString('hex');
+    const hashedPassword = bcrypt.hashSync('admin123', 10);
+
+    db.run(`
+      INSERT OR IGNORE INTO users (id, role, name, email, phone, password)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [
+      adminId,
+      'admin',
+      'Administrador',
+      'admin@perronegro.com',
+      '0000000000',
+      hashedPassword
+    ]);
   });
-};
-
-
-// Enable foreign keys and WAL mode for better performance
-db.serialize(() => {
-  db.run('PRAGMA foreign_keys = ON');
-  db.run('PRAGMA journal_mode = WAL');
-
-  // Create tables
-  db.run(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      role TEXT NOT NULL CHECK (role IN ('admin', 'customer')),
-      dni TEXT UNIQUE,
-      name TEXT NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      phone TEXT,
-      password TEXT NOT NULL,
-      points INTEGER DEFAULT 0,
-      total_spent REAL DEFAULT 0,
-      reset_token TEXT,
-      reset_token_expires DATETIME,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS transactions (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      type TEXT NOT NULL CHECK (type IN ('purchase', 'redemption')),
-      amount REAL NOT NULL,
-      points_earned INTEGER NOT NULL,
-      description TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS loyalty_rules (
-      id TEXT PRIMARY KEY,
-      min_amount REAL NOT NULL,
-      max_amount REAL,
-      points_earned INTEGER NOT NULL,
-      multiplier REAL DEFAULT 1,
-      description TEXT NOT NULL,
-      is_active BOOLEAN DEFAULT 1,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      CHECK (min_amount >= 0),
-      CHECK (max_amount IS NULL OR max_amount > min_amount)
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS rewards (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      points_cost INTEGER NOT NULL,
-      description TEXT NOT NULL,
-      is_active BOOLEAN DEFAULT 1,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      CHECK (points_cost > 0)
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS redemptions (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      reward_id TEXT NOT NULL,
-      status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'applied', 'cancelled')),
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      applied_at DATETIME,
-      cancelled_at DATETIME,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (reward_id) REFERENCES rewards(id) ON DELETE CASCADE
-    )
-  `);
-
-  // Create indices for better query performance
-  db.run('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_users_dni ON users(dni)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_redemptions_user_id ON redemptions(user_id)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_redemptions_reward_id ON redemptions(reward_id)');
-
-  // Initialize admin user if not exists
-  const adminId = crypto.randomBytes(16).toString('hex');
-  const hashedPassword = bcrypt.hashSync('admin123', 10);
-
-  db.run(`
-    INSERT OR IGNORE INTO users (id, role, name, email, phone, password)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `, [
-    adminId,
-    'admin',
-    'Administrador',
-    'admin@perronegro.com',
-    '0000000000',
-    hashedPassword
-  ]);
-});
+} else {
+  console.log('Database file already exists, skipping creation...');
+}
 
 // Helper function to promisify db.all
 const all = (query, params = []) => {
@@ -229,4 +220,4 @@ process.on('SIGINT', () => {
   });
 });
 
-export { db, all, get, run, runTransaction, backupDatabase};
+export { db, all, get, run, runTransaction, backupDatabase };
