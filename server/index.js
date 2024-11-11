@@ -17,13 +17,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// Rutas de la API
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/loyalty-rules', loyaltyRoutes);
 app.use('/api/rewards', rewardRoutes);
 
+// Servir los archivos estáticos generados por Vite en la carpeta "dist"
+app.use(express.static(join(__dirname, '../dist')));
+
+// Enrutamiento de cualquier otra ruta hacia el archivo index.html (para React Router)
+app.get('*', (req, res) => {
+  res.sendFile(join(__dirname, '../dist', 'index.html'));
+});
+
+// Arrancar el servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", function () {
   console.log(`Server running on port ${PORT}`);
