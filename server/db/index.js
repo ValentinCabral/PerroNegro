@@ -10,8 +10,10 @@ const __dirname = dirname(__filename);
 // Enable verbose mode for debugging
 sqlite3.verbose();
 
-// Create database connection with proper configuration
-const db = new sqlite3.Database(join(__dirname, 'database.sqlite'), (err) => {
+// Crear la conexión a la base de datos en una ruta persistente
+const dbPath = process.env.DATABASE_PATH || join(__dirname, '/mnt/data/database.sqlite');
+
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Error connecting to database:', err);
   } else {
