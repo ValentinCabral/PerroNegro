@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, CreditCard, Gift, Award, History } from 'lucide-react';
+import { Users, CreditCard, Gift, Award, History, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { CustomersList } from '../components/CustomersList';
 import { TransactionForm } from '../components/TransactionForm';
@@ -19,7 +19,8 @@ const tabs = [
   { id: 'transactions', label: 'Registrar Compras', icon: CreditCard },
   { id: 'rules', label: 'Reglas de Puntos', icon: Gift },
   { id: 'rewards', label: 'Recompensas', icon: Award },
-  { id: 'redemptions', label: 'Canjes', icon: History }
+  { id: 'redemptions', label: 'Canjes', icon: History },
+  { id: 'backup', label: 'Backup', icon: Download } // Nueva pestaña para el backup
 ];
 
 export function Admin() {
@@ -39,7 +40,6 @@ export function Admin() {
     try {
       setLoading(true);
       const { data } = await api.get('/loyalty-rules');
-      // Transform snake_case to camelCase
       const transformedRules = data.map((rule: any) => ({
         id: rule.id,
         minAmount: rule.min_amount,
@@ -82,6 +82,22 @@ export function Admin() {
       setRedemptions([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const downloadBackup = async () => {
+    try {
+      const response = await api.get('/backup', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'database-backup.sqlite');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      toast.success('Backup descargado exitosamente');
+    } catch (error) {
+      toast.error('Error al descargar el backup');
     }
   };
 
@@ -131,20 +147,17 @@ export function Admin() {
                   <CustomersList />
                 </Card>
               )}
-
               {activeTab === 'transactions' && (
                 <Card>
                   <TransactionForm onSuccess={() => toast.success('Compra registrada exitosamente')} />
                 </Card>
               )}
-
               {activeTab === 'rules' && (
                 <div className="space-y-6">
                   <Card>
                     <h2 className="text-xl font-semibold mb-6">Nueva Regla de Puntos</h2>
                     <LoyaltyRuleForm onSuccess={fetchRules} />
                   </Card>
-
                   <Card>
                     <h2 className="text-xl font-semibold mb-6">Reglas Actuales</h2>
                     {loading ? (
@@ -157,14 +170,12 @@ export function Admin() {
                   </Card>
                 </div>
               )}
-
               {activeTab === 'rewards' && (
                 <div className="space-y-6">
                   <Card>
                     <h2 className="text-xl font-semibold mb-6">Nueva Recompensa</h2>
                     <RewardForm onSuccess={fetchRewards} />
                   </Card>
-
                   <Card>
                     <h2 className="text-xl font-semibold mb-6">Recompensas Disponibles</h2>
                     {loading ? (
@@ -181,14 +192,13 @@ export function Admin() {
                   </Card>
                 </div>
               )}
-
               {activeTab === 'redemptions' && (
                 <Card>
                   <h2 className="text-xl font-semibold mb-6">Historial de Canjes</h2>
                   {loading ? (
                     <div className="flex justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                    </div>
+                      </div>
                   ) : (
                     <RedemptionsList 
                       redemptions={redemptions} 
@@ -196,6 +206,17 @@ export function Admin() {
                       onStatusChange={fetchRedemptions}
                     />
                   )}
+                </Card>
+              )}
+              {activeTab === 'backup' && (
+                <Card>
+                  <h2 className="text-xl font-semibold mb-6">Descargar Backup</h2>
+                  <button
+                    onClick={downloadBackup}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    Descargar Backup
+                  </button>
                 </Card>
               )}
             </motion.div>
