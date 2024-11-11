@@ -10,6 +10,7 @@ const useDownloadBackup = () => {
     try {
       setLoading(true);
       const response = await api.get('/backup', { responseType: 'blob' });
+      console.log(response.data)
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;

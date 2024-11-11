@@ -27,14 +27,23 @@ const backupDatabase = (req, res) => {
 
   // Nombre del archivo de respaldo con fecha
   const backupFileName = `database_backup_${currentDate}.sqlite`;
-  const backupPath = join(__dirname, 'database.sqlite'); // Ruta al archivo database.sqlite
+  const backupPath = join(__dirname, backupFileName); // Ruta al archivo de respaldo
 
-  // Enviar el archivo como descarga
-  res.download(backupPath, backupFileName, (err) => {
+  // Copiar el archivo database.sqlite a database_backup_AAAA-MM-DD.sqlite
+  fs.copyFile(join(__dirname, 'database.sqlite'), backupPath, (err) => {
     if (err) {
-      console.error('Error during file download:', err);
-      res.status(500).send('Error al descargar el archivo');
+      console.error('Error al copiar el archivo:', err);
+      res.status(500).send('Error al generar el backup');
+      return; 
     }
+
+    // Enviar el archivo de respaldo como descarga
+    res.download(backupPath, backupFileName, (err) => {
+      if (err) {
+        console.error('Error during file download:', err);
+        res.status(500).send('Error al descargar el archivo');
+      }
+    });
   });
 };
 
