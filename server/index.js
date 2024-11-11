@@ -27,21 +27,7 @@ app.use('/api/loyalty-rules', loyaltyRoutes);
 app.use('/api/rewards', rewardRoutes);
 
 // Endpoint para descargar el backup de la base de datos
-app.get('/download-db', (req, res) => {
-  // Ruta absoluta del archivo de la base de datos
-  const filePath = process.env.DATABASE_PATH || path.join(__dirname, 'db', 'database.sqlite');
-
-  // Nombre con el que se descargará el archivo
-  const downloadFileName = 'database.sqlite';
-
-  // Envía el archivo con el nombre y extensión correctos
-  res.download(filePath, downloadFileName, (err) => {
-    if (err) {
-      console.error('Error al descargar el archivo:', err);
-      res.status(500).send('Error al descargar el archivo');
-    }
-  });
-});
+app.get('/download-db', downloadDatabase);
 
 
 // Servir los archivos estáticos generados por Vite en la carpeta "dist"
